@@ -41,6 +41,12 @@
             z-index: 100;
         }
         .logo { max-width: 220px; height: auto; }
+        .logo-text-fallback {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--secondary-color);
+            letter-spacing: 0.5px;
+        }
 
         /* --- אזור כותרת (Hero) --- */
         .hero {
@@ -499,12 +505,16 @@
 <body>
 
 <header>
-    <img src="Amsalem_Logo NO SLOGAN (10).png" alt="AMS Visa Logo" class="logo" onerror="this.src=''; this.alt='AMS VISA'; this.style.fontSize='24px'; this.style.fontWeight='bold'; this.style.color='#1e293b';">
+    <!-- שינוי onerror על מנת למנוע לולאה אינסופית והצגת טקסט חלופי נקי -->
+    <div id="logo-container">
+        <img src="Amsalem_Logo NO SLOGAN (10).png" alt="AMS VISA" class="logo" id="headerLogo" onerror="this.onerror=null; this.style.display='none'; document.getElementById('logoTextFallback').style.display='inline-block';">
+        <span id="logoTextFallback" class="logo-text-fallback" style="display: none;">AMS VISA</span>
+    </div>
 </header>
 
 <div class="hero">
     <div class="hero-subtitle">
-        <img src="Amsalem_Logo NO SLOGAN (10).png" alt="Amsalem Logo" class="subtitle-logo" onerror="this.style.display='none';">
+        <img src="Amsalem_Logo NO SLOGAN (10).png" alt="Amsalem Logo" class="subtitle-logo" onerror="this.onerror=null; this.style.display='none';">
         <span>שירותי ויזות ואשרות מבית אמסלם טורס</span>
     </div>
     <h1 class="hero-title">מחירון ויזות ואשרות כניסה<br><span>למגזר העסקי והפרטי</span></h1>
@@ -710,7 +720,10 @@
         });
     }
 
-    initCards();
+    // הפעלה מתוך אירוע בטוח
+    document.addEventListener("DOMContentLoaded", function() {
+        initCards();
+    });
 
     // פתיחת פאנל הצד
     function openCountry(code) {
