@@ -505,7 +505,6 @@
 <body>
 
 <header>
-    <!-- שינוי onerror על מנת למנוע לולאה אינסופית והצגת טקסט חלופי נקי -->
     <div id="logo-container">
         <img src="Amsalem_Logo NO SLOGAN (10).png" alt="AMS VISA" class="logo" id="headerLogo" onerror="this.onerror=null; this.style.display='none'; document.getElementById('logoTextFallback').style.display='inline-block';">
         <span id="logoTextFallback" class="logo-text-fallback" style="display: none;">AMS VISA</span>
@@ -698,7 +697,9 @@
         ]}
     };
 
-    // אתחול הממשק באופן מיידי
+    let userApiKey = ""; // מחזיק את מפתח ה-API שהמשתמש מקליד במובייל/דסקטופ
+
+    // אתחול הממשק באופן בטוח
     function initCards() {
         const listContainer = document.getElementById('listContainer');
         if(!listContainer) return;
@@ -774,6 +775,22 @@
             </div>
         `;
 
+        // הוספת תיבת הזנת API Key מאובטחת ואישית במידה והקוד רץ ב-GitHub (מפתח ריק)
+        if (!apiKey) {
+            contentDiv.innerHTML += `
+                <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 15px; margin-top: 20px;">
+                    <label style="display: block; font-size: 0.9em; font-weight: 700; color: var(--secondary-color); margin-bottom: 8px;">
+                        🔑 מפתח Gemini API (נדרש להרצה מחוץ ל-Canvas):
+                    </label>
+                    <input type="password" id="userApiKeyInput" placeholder="הדבק את מפתח ה-API האישי שלך כאן..." value="${userApiKey}" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 0.95em; box-sizing: border-box;" oninput="userApiKey = this.value">
+                    <div style="margin-top: 8px; font-size: 0.8em; color: #64748b; line-height: 1.4;">
+                        המפתח נשמר בדפדפן שלך בלבד ואינו נחשף בקוד הפומבי ב-GitHub. 
+                        אין לך מפתח? <a href="https://aistudio.google.com/" target="_blank" style="color: var(--primary-dark); font-weight: 700; text-decoration: underline;">קבל מפתח חינם מ-Google AI Studio</a>
+                    </div>
+                </div>
+            `;
+        }
+
         // כפתור העוזר החכם ואזור התשובה שלו
         contentDiv.innerHTML += `
             <button class="ai-btn" id="aiBtn" onclick="generateAITips('${country.name}')">
@@ -808,12 +825,26 @@
         }
     }
 
+    // פונקציית עזר לניקוי קוד markdown שעלול לחזור מה-AI
+    function cleanMarkdownHTML(rawHtml) {
+        let cleaned = rawHtml.trim();
+        cleaned = cleaned.replace(/^```html\s*/i, '');
+        cleaned = cleaned.replace(/^```\s*/i, '');
+        cleaned = cleaned.replace(/```$/, '');
+        return cleaned.trim();
+    }
+
     // --- אינטגרציה עם Gemini API ---
     const apiKey = "";
 
     async function fetchGeminiWithBackoff(prompt, maxRetries = 5) {
+        const activeKey = apiKey || userApiKey || "";
+        if (!activeKey) {
+            throw new Error("מפתח API חסר. אנא הזן מפתח API כדי להשתמש בעוזר החכם מחוץ ל-Canvas.");
+        }
+        
         const delays = [1000, 2000, 4000, 8000, 16000];
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${activeKey}`;
         
         const payload = {
             contents: [{ parts: [{ text: prompt }] }],
@@ -861,10 +892,14 @@
 
         try {
             const htmlResponse = await fetchGeminiWithBackoff(prompt);
-            responseDiv.innerHTML = htmlResponse;
+            responseDiv.innerHTML = cleanMarkdownHTML(htmlResponse);
             responseDiv.style.display = 'block';
         } catch (error) {
-            responseDiv.innerHTML = '<p style="color: #dc2626;"><strong>שגיאה:</strong> לא הצלחנו לטעון את הטיפים החכמים כעת. ייתכן שיש עומס על השרת, אנא נסה שוב מאוחר יותר.</p>';
+            let errorMsg = 'לא הצלחנו לטעון את הטיפים החכמים כעת. ייתכן שיש עומס על השרת, אנא נסה שוב מאוחר יותר.';
+            if (error.message.includes("מפתח API חסר")) {
+                errorMsg = '<strong>שגיאה:</strong> מפתח API חסר. אנא הדבק מפתח API תקין בתיבה שלמעלה ולחץ שוב על הכפתור.';
+            }
+            responseDiv.innerHTML = `<p style="color: #dc2626; line-height: 1.5;">${errorMsg}</p>`;
             responseDiv.style.display = 'block';
             
             btn.style.display = 'flex';
